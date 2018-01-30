@@ -1,6 +1,8 @@
-import { PaginationListView as ListView, WrapperProps } from "./Pagination";
+import { ListView } from "../Shared/SharedUtils";
 
-export interface ValidateConfigProps extends WrapperProps {
+import { ModelerProps } from "./Pagination";
+
+export interface ValidateConfigProps extends ModelerProps {
     inWebModeler?: boolean;
     queryNode?: HTMLElement | null;
     targetListView?: ListView | null;

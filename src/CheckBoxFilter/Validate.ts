@@ -11,7 +11,7 @@ export class Validate {
         if (props.filterBy === "attribute" && !props.attribute) {
             errorMessage.push("Filter by 'Attribute' requires an 'Attribute'");
         }
-        if (props.filterBy === "attribute" && !props.attributeValue) {
+        if (props.filterBy === "attribute" && !props.attributeValue.trim()) {
             errorMessage.push("Filter by 'Attribute' requires an 'Attribute value'");
         }
         if (props.unCheckedFilterBy === "XPath" && !props.unCheckedConstraint) {
@@ -20,7 +20,7 @@ export class Validate {
         if (props.unCheckedFilterBy === "attribute" && !props.unCheckedAttribute) {
             errorMessage.push("Unchecked filter by 'Attribute' requires an 'Attribute'");
         }
-        if (props.unCheckedFilterBy === "attribute" && !props.unCheckedAttributeValue) {
+        if (props.unCheckedFilterBy === "attribute" && !props.unCheckedAttributeValue.trim()) {
             errorMessage.push("Unchecked filter by 'Attribute' requires an 'Attribute value'");
         }
         if (!props.isWebModeler) {

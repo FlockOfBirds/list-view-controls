@@ -1,6 +1,4 @@
 import { Component, ReactElement, createElement } from "react";
-import { findDOMNode } from "react-dom";
-import * as dijitRegistry from "dijit/registry";
 import * as classNames from "classnames";
 import * as dojoConnect from "dojo/_base/connect";
 import * as dojoTopic from "dojo/topic";
@@ -32,12 +30,12 @@ export interface ContainerState {
     publishedSortOrder?: string;
     publishedSortWidgetFriendlyId?: string;
     targetListView?: ListView | null;
-    targetNode?: HTMLElement;
 }
 
 export default class DropDownSortContainer extends Component<ContainerProps, ContainerState> {
     private navigationHandler: object;
     private dataSourceHelper: DataSourceHelper;
+    private widgetDOM: HTMLElement;
 
     constructor(props: ContainerProps) {
         super(props);
@@ -52,6 +50,7 @@ export default class DropDownSortContainer extends Component<ContainerProps, Con
     render() {
         return createElement("div", {
                 className: classNames("widget-drop-down-sort", this.props.class),
+                ref: (widgetDOM: HTMLElement) => this.widgetDOM = widgetDOM,
                 style: SharedUtils.parseStyle(this.props.style)
             },
             createElement(Alert, {
@@ -94,22 +93,16 @@ export default class DropDownSortContainer extends Component<ContainerProps, Con
     }
 
     private connectToListView() {
-        const queryNode = findDOMNode(this).parentNode as HTMLElement;
-        const targetNode = SharedUtils.findTargetNode(queryNode) as HTMLElement;
-        let targetListView: ListView | null = null;
         let errorMessage = "";
 
-        if (targetNode) {
-            targetListView = dijitRegistry.byNode(targetNode);
-            if (targetListView) {
-                this.subScribeToWidgetChanges(targetListView);
-                try {
-                    this.dataSourceHelper = DataSourceHelper.getInstance(targetListView, this.props.friendlyId, DataSourceHelper.VERSION);
-                } catch (error) {
-                    errorMessage = error.message;
-                }
-            }
+        try {
+            this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDOM.parentElement, this.props.entity);
+        } catch (error) {
+            errorMessage = error.message;
         }
+
+        const targetListView = this.dataSourceHelper.getListView();
+        this.subScribeToWidgetChanges(targetListView);
 
         const validationMessage = SharedUtils.validateCompatibility({
             friendlyId: this.props.friendlyId,
@@ -120,15 +113,14 @@ export default class DropDownSortContainer extends Component<ContainerProps, Con
         this.setState({
             alertMessage: validationMessage || errorMessage,
             listViewAvailable: !!targetListView,
-            targetListView,
-            targetNode
+            targetListView
         });
     }
 
     private updateSort(attribute: string, order: string) {
-        const { targetNode, targetListView } = this.state;
+        const { targetListView } = this.state;
 
-        if (targetListView && targetNode && this.dataSourceHelper) {
+        if (targetListView && this.dataSourceHelper) {
             this.dataSourceHelper.setSorting(this.props.friendlyId, [ attribute, order ]);
             this.publishWidgetChanges(attribute, order);
         }

@@ -1,7 +1,5 @@
 import { Component, ReactElement, createElement } from "react";
-import { findDOMNode } from "react-dom";
 import * as classNames from "classnames";
-import * as dijitRegistry from "dijit/registry";
 import * as dojoConnect from "dojo/_base/connect";
 
 import { Alert } from "../../Shared/components/Alert";
@@ -39,6 +37,7 @@ export interface ContainerState {
 export default class DropDownFilterContainer extends Component<ContainerProps, ContainerState> {
     private dataSourceHelper: DataSourceHelper;
     private navigationHandler: object;
+    private widgetDOM: HTMLElement;
 
     constructor(props: ContainerProps) {
         super(props);
@@ -57,6 +56,7 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
         return createElement("div",
             {
                 className: classNames("widget-drop-down-filter", this.props.class),
+                ref: (widgetDOM: HTMLElement) => this.widgetDOM = widgetDOM,
                 style: SharedUtils.parseStyle(this.props.style)
             },
             this.renderAlert(),
@@ -124,22 +124,15 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
     }
 
     private connectToListView() {
-        const filterNode = findDOMNode(this).parentNode as HTMLElement;
-        const targetNode = SharedUtils.findTargetNode(filterNode);
-        let targetListView: ListView | null = null;
         let errorMessage = "";
 
-        if (targetNode) {
-            DataSourceHelper.hideContent(targetNode);
-            targetListView = dijitRegistry.byNode(targetNode);
-            if (targetListView) {
-                try {
-                    this.dataSourceHelper = DataSourceHelper.getInstance(targetListView, this.props.friendlyId, DataSourceHelper.VERSION);
-                } catch (error) {
-                    errorMessage = error.message;
-                }
-            }
+        try {
+            this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDOM.parentElement, this.props.entity);
+        } catch (error) {
+            errorMessage = error.message;
         }
+        const targetListView = this.dataSourceHelper.getListView();
+        // DataSourceHelper.hideContent(targetListView.domNode);
 
         const validationMessage = SharedUtils.validateCompatibility({
             friendlyId: this.props.friendlyId,
@@ -150,8 +143,7 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
         this.setState({
             alertMessage: validationMessage || errorMessage,
             listViewAvailable: !!targetListView,
-            targetListView,
-            targetNode
+            targetListView
         });
     }
 }

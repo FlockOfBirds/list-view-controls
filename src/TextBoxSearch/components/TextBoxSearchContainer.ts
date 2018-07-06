@@ -36,17 +36,15 @@ export interface ContainerState {
 }
 
 export default class SearchContainer extends Component<ContainerProps, ContainerState> {
-    private dataSourceHelper: DataSourceHelper;
-    private navigationHandler: object;
-    private widgetDOM: HTMLElement;
+    private dataSourceHelper?: DataSourceHelper;
+    private connections: object[] = [];
+    private widgetDOM?: HTMLElement;
 
     constructor(props: ContainerProps) {
         super(props);
 
         this.state = { listViewAvailable: false };
-
-        this.applySearch = this.applySearch.bind(this);
-        this.navigationHandler = dojoConnect.connect(props.mxform, "onNavigation", this, this.connectToListView.bind(this));
+        this.connections.push(dojoConnect.connect(props.mxform, "onNavigation", this, this.connectToListView));
     }
 
     componentDidUpdate(_previousProps: ContainerProps, previousState: ContainerState) {
@@ -58,7 +56,7 @@ export default class SearchContainer extends Component<ContainerProps, Container
     render() {
         return createElement("div", {
                 className: classNames("widget-text-box-search", this.props.class),
-                ref: (widgetDOM) => this.widgetDOM = widgetDOM,
+                ref: (widgetDOM) => this.widgetDOM = widgetDOM as HTMLElement,
                 style: SharedUtils.parseStyle(this.props.style)
             },
             createElement(Alert, {
@@ -70,7 +68,7 @@ export default class SearchContainer extends Component<ContainerProps, Container
     }
 
     componentWillUnmount() {
-        dojoConnect.disconnect(this.navigationHandler);
+        this.connections.forEach(dojoConnect.disconnect);
     }
 
     private renderTextBoxSearch(): ReactElement<TextBoxSearchProps> | null {
@@ -85,8 +83,7 @@ export default class SearchContainer extends Component<ContainerProps, Container
         return null;
     }
 
-    private applySearch(searchQuery: string) {
-        // Construct constraint based on search query
+    private applySearch = (searchQuery: string) => {
         const constraint = this.getConstraint(searchQuery);
 
         if (this.dataSourceHelper) {
@@ -101,7 +98,6 @@ export default class SearchContainer extends Component<ContainerProps, Container
 
         if (!searchQuery) {
             return "";
-
         }
 
         if (window.mx.isOffline()) {
@@ -123,22 +119,25 @@ export default class SearchContainer extends Component<ContainerProps, Container
 
         if (targetListView && targetListView._datasource && searchQuery) {
             const constraints: string[] = [];
+
             this.props.attributeList.forEach(searchAttribute => {
                 constraints.push(`contains(${searchAttribute.attribute},'${searchQuery}')`);
             });
 
-            return "[" + constraints.join(" or ") + "]";
+            return constraints.length ? "[" + constraints.join(" or ") + "]" : "";
         }
         return "";
     }
 
-    private connectToListView() {
+    private connectToListView = () => {
         let errorMessage = "";
         let targetListView: ListView | undefined;
 
         try {
-            this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDOM.parentElement, this.props.entity);
-            targetListView = this.dataSourceHelper.getListView();
+            if (this.widgetDOM && this.widgetDOM.parentElement && this.widgetDOM.parentElement) {
+                this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDOM.parentElement, this.props.entity);
+                targetListView = this.dataSourceHelper.getListView();
+            }
         } catch (error) {
             errorMessage = error.message;
         }
@@ -149,4 +148,5 @@ export default class SearchContainer extends Component<ContainerProps, Container
             targetListView
         });
     }
+
 }

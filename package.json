@@ -1,11 +1,11 @@
 {
   "name": "list-view-controls",
   "widgetName": "ListViewControls",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Search and filter Mendix list views",
   "copyright": "Mendix BV",
   "scripts": {
-    "start": "nodemon --watch webpack.config.js --watch Gruntfile.js --exec \"grunt",
+    "start": "nodemon --watch webpack.config.js --watch Gruntfile.js --exec grunt",
     "emit": "tsc",
     "pretest": "tsc && npm run lint && npm run build",
     "test": "npm run test:unit && npm run test:conditional",
@@ -20,7 +20,8 @@
     "build": "grunt release",
     "updateProject": "node ./node_modules/mendix-widget-build-script/dist/UpdateMxProject.js",
     "deployApp": "node ./node_modules/mendix-widget-build-script/dist/DeployMxApp.js",
-    "deployAndTest": "npm run deploy && npm run test:e2e"
+    "deployAndTest": "npm run deploy && npm run test:e2e",
+    "docker": "sudo docker build -t listviewcontrols ."
   },
   "pre-commit": [
     "emit",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@types/classnames": "^2.2.3",
     "@types/core-js": "^0.9.46",
+    "@types/dojo": "^1.9.40",
     "@types/enzyme": "^3.1.10",
     "@types/enzyme-adapter-react-16": "^1.0.2",
     "@types/jasmine": "^2.8.6",
@@ -74,7 +76,7 @@
     "karma-sourcemap-loader": "^0.3.7",
     "karma-spec-reporter": "0.0.32",
     "karma-webpack": "^3.0.0",
-    "mendix-client": "^7.13.2",
+    "mendix-client": "v7.13.4",
     "mendix-widget-build-script": "^1.0.0",
     "node-sass": "^4.9.0",
     "nodemon": "^1.17.3",
@@ -88,7 +90,7 @@
     "source-map-loader": "^0.2.1",
     "style-loader": "^0.21.0",
     "ts-loader": "^4.2.0",
-    "tslint": "^5.9.1",
+    "tslint": "^5.10.0",
     "tslint-eslint-rules": "^5.1.0",
     "typescript": "^2.8.3",
     "url-loader": "^1.0.1",

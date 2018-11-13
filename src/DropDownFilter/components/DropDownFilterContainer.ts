@@ -9,6 +9,7 @@ import { Validate } from "../Validate";
 
 import { DropDownFilter, DropDownFilterProps } from "./DropDownFilter";
 import { SharedContainerUtils } from "../../Shared/SharedContainerUtils";
+import FormViewState from "../../Shared/FormViewState";
 
 import "../ui/DropDownFilter.scss";
 
@@ -33,29 +34,39 @@ export interface ContainerState {
     listViewAvailable: boolean;
     targetListView?: ListView;
     targetNode?: HTMLElement;
+    defaultOption?: FilterProps;
+}
+
+interface FormState {
+    defaultOption?: FilterProps;
 }
 
 export default class DropDownFilterContainer extends Component<ContainerProps, ContainerState> {
     private dataSourceHelper: DataSourceHelper;
-    private widgetDOM: HTMLElement;
-
-    readonly state: ContainerState = {
-        alertMessage: Validate.validateProps(this.props),
-        listViewAvailable: false
-    };
+    private widgetDom: HTMLElement;
+    private viewStateManager: FormViewState<FormState>;
 
     constructor(props: ContainerProps) {
         super(props);
 
-        mendixLang.delay(this.connectToListView.bind(this), this.checkListViewAvailable.bind(this), 20);
         this.applyFilter = this.applyFilter.bind(this);
+        const id = this.props.uniqueid || this.props.friendlyId;
+        this.viewStateManager = new FormViewState(this.props.mxform, id, viewState => {
+            viewState.defaultOption = this.state.defaultOption;
+        });
+
+        this.state = {
+            alertMessage: Validate.validateProps(this.props),
+            listViewAvailable: false,
+            defaultOption: this.getDefaultOption()
+        };
     }
 
     render() {
         return createElement("div",
             {
                 className: classNames("widget-drop-down-filter", this.props.class),
-                ref: (widgetDOM: HTMLElement) => this.widgetDOM = widgetDOM,
+                ref: (widgetDom: HTMLElement) => this.widgetDom = widgetDom,
                 style: SharedUtils.parseStyle(this.props.style)
             },
             this.renderAlert(),
@@ -63,15 +74,26 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
         );
     }
 
-    componentDidUpdate() {
-        if (this.state.listViewAvailable) {
-            const selectedFilter = this.props.filters.filter(filter => filter.isDefault)[0] || this.props.filters[0];
-            this.applyFilter(selectedFilter);
+    componentDidMount() {
+        mendixLang.delay(this.connectToListView.bind(this), this.checkListViewAvailable.bind(this), 20);
+    }
+
+    componentDidUpdate(_prevProps: ContainerProps, prevState: ContainerState) {
+        if (this.state.listViewAvailable && !prevState.listViewAvailable) {
+            this.applyFilter(this.state.defaultOption);
         }
     }
 
+    componentWillUnmount() {
+        this.viewStateManager.destroy();
+    }
+
     private checkListViewAvailable(): boolean {
-        return !!SharedContainerUtils.findTargetListView(this.widgetDOM.parentElement, this.props.entity);
+        if (!this.widgetDom) {
+            return false;
+        }
+
+        return !!SharedContainerUtils.findTargetListView(this.widgetDom.parentElement, this.props.entity);
     }
 
     private renderAlert() {
@@ -83,13 +105,13 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
 
     private renderDropDownFilter(): ReactElement<DropDownFilterProps> {
         if (!this.state.alertMessage) {
-            const defaultFilterIndex = this.props.filters.indexOf(this.props.filters.filter(value => value.isDefault)[0]);
+            const selectedCaption = this.state.defaultOption && this.state.defaultOption.caption;
+            const defaultFilterIndex = this.props.filters.map(value => value.caption).indexOf(selectedCaption);
             if (this.props.mxObject) {
-            this.props.filters.forEach(filter => filter.constraint = filter.constraint.replace(/\[%CurrentObject%\]/g,
+                this.props.filters.forEach(filter => filter.constraint = filter.constraint.replace(/\[%CurrentObject%\]/g,
                     this.props.mxObject.getGuid()
                 ));
             }
-
             return createElement(DropDownFilter, {
                 defaultFilterIndex,
                 filters: this.props.filters,
@@ -100,11 +122,18 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
         return null;
     }
 
+    private getDefaultOption() {
+        const defaultFilter = this.props.filters.filter(value => value.isDefault)[0];
+
+        return this.viewStateManager.getPageState("defaultOption", defaultFilter);
+    }
+
     private applyFilter(selectedFilter: FilterProps) {
         const constraint = this.getConstraint(selectedFilter);
         if (this.dataSourceHelper) {
             this.dataSourceHelper.setConstraint(this.props.friendlyId, constraint);
         }
+        this.setState({ defaultOption: selectedFilter });
     }
 
     private getConstraint(selectedFilter: FilterProps) {
@@ -147,7 +176,7 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
         let targetListView: ListView | undefined;
 
         try {
-            this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDOM.parentElement, this.props.entity);
+            this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDom.parentElement, this.props.entity);
             targetListView = this.dataSourceHelper.getListView();
         } catch (error) {
             errorMessage = error.message;
@@ -163,4 +192,5 @@ export default class DropDownFilterContainer extends Component<ContainerProps, C
             targetListView
         });
     }
+
 }

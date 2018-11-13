@@ -7,7 +7,7 @@ export interface PageSizeSelectProps {
     listViewSize: number;
 
     sizeOptions: OptionProps[];
-    handleChange: (optionProps: OnChangeProps) => void;
+    onChange: (offSet?: number, pageSize?: number) => void;
 }
 
 interface PageSizeState {
@@ -25,8 +25,18 @@ export type Display = Partial<OptionProps> & Partial<PageSizeState>;
 export interface OnChangeProps {
     newOffSet: number;
     newPageSize: number;
-    newPageNumber: number;
 }
+
+export const calculateOffSet = (listViewSize: number, newPageSize: number, oldPageNumber: number): OnChangeProps => {
+    const numberOfPages = Math.ceil(listViewSize / newPageSize);
+    const newPageNumber = (oldPageNumber >= 1 && oldPageNumber <= numberOfPages) ? oldPageNumber : 1;
+    const newOffSet = (newPageNumber - 1) * newPageSize;
+
+    return {
+        newOffSet,
+        newPageSize
+    };
+};
 
 export class PageSizeSelect extends Component<PageSizeSelectProps, PageSizeState> {
     private filters: Display[];
@@ -92,20 +102,8 @@ export class PageSizeSelect extends Component<PageSizeSelectProps, PageSizeState
             pageSize: selectedPageSize
          });
 
-        const newOffSet = this.calculateOffSet(listViewSize, selectedPageSize, this.props.currentPage);
-        this.props.handleChange(newOffSet);
-    }
-
-    private calculateOffSet = (listViewSize: number, newPageSize: number, oldPageNumber: number): OnChangeProps => {
-        const numberOfPages = Math.ceil(listViewSize / newPageSize);
-        const newPageNumber = (oldPageNumber >= 1 && oldPageNumber <= numberOfPages) ? oldPageNumber : 1;
-        const newOffSet = (newPageNumber - 1) * newPageSize;
-
-        return {
-            newOffSet,
-            newPageNumber,
-            newPageSize
-        };
+        const newOffSet = calculateOffSet(listViewSize, selectedPageSize, this.props.currentPage);
+        this.props.onChange(newOffSet.newOffSet, newOffSet.newPageSize);
     }
 
     static getSelectedValue = (sizeOptions: OptionProps[], selectedPageSize: number): string => {

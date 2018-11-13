@@ -1,4 +1,5 @@
 export interface WrapperProps {
+    uniqueid: string;
     class: string;
     style: string;
     friendlyId: string;
@@ -9,11 +10,15 @@ export interface WrapperProps {
 export interface ListView extends mxui.widget._WidgetBase {
     _datasource: {
         setOffset: (offSet: number) => void;
+        setPageSize: (pageSize: number) => void;
         _constraints: Constraints;
         _entity: string;
-        _pageSize: number;
-        _setSize: number;
+        _pageObjs: any[];
         _sorting: string[][];
+        getOffset: () => number;
+        getPageSize: () => number;
+        getSetSize: () => number;
+        __customWidgetPagingOffset: number;
     };
     _entity: string;
     _renderData: () => void;
@@ -42,6 +47,11 @@ export interface GroupedOfflineConstraint {
 export type Constraints = (GroupedOfflineConstraint | OfflineConstraint)[] | string;
 
 export const paginationTopicSuffix = "_paginationUpdate";
+
+export const StoreState = <T>(form: mxui.lib.form._FormBase, uniqueid: string) => (state: T) => {
+    const viewState = form.viewState && form.viewState[uniqueid];
+    form.viewState[uniqueid] = { ...viewState, ...(state as any) };
+};
 
 export class SharedUtils {
     static parseStyle(style = ""): {[key: string]: string} {

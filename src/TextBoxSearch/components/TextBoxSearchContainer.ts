@@ -4,18 +4,11 @@ import * as classNames from "classnames";
 
 import { Alert } from "../../Shared/components/Alert";
 import { DataSourceHelper } from "../../Shared/DataSourceHelper/DataSourceHelper";
-import { GroupedOfflineConstraint, ListView, OfflineConstraint, SharedUtils } from "../../Shared/SharedUtils";
+import { GroupedOfflineConstraint, ListView, OfflineConstraint, SharedUtils, WrapperProps } from "../../Shared/SharedUtils";
 
 import { TextBoxSearch, TextBoxSearchProps } from "./TextBoxSearch";
 import { SharedContainerUtils } from "../../Shared/SharedContainerUtils";
-
-interface WrapperProps {
-    class: string;
-    style: string;
-    friendlyId: string;
-    mxform: mxui.lib.form._FormBase;
-    mxObject: mendix.lib.MxObject;
-}
+import FormViewState from "../../Shared/FormViewState";
 
 export interface ContainerProps extends WrapperProps {
     attributeList: SearchAttributes[];
@@ -34,30 +27,38 @@ export interface ContainerState {
     targetListView?: ListView;
     targetNode?: HTMLElement;
     validationPassed?: boolean;
+    defaultSearchText?: string;
+}
+
+interface FormState {
+    defaultSearchText?: string;
 }
 
 export default class SearchContainer extends Component<ContainerProps, ContainerState> {
     private dataSourceHelper: DataSourceHelper;
-    private widgetDOM: HTMLElement;
+    private widgetDom: HTMLElement;
+    private viewStateManager: FormViewState<FormState>;
 
-    readonly state: ContainerState = { listViewAvailable: false };
     constructor(props: ContainerProps) {
         super(props);
 
-        mendixLang.delay(this.connectToListView.bind(this), this.checkListViewAvailable.bind(this), 20);
         this.applySearch = this.applySearch.bind(this);
-    }
+        const id = this.props.uniqueid || this.props.friendlyId;
+        this.viewStateManager = new FormViewState(this.props.mxform, id, viewState => {
+            viewState.defaultSearchText = this.state.defaultSearchText;
+        });
 
-    componentDidUpdate() {
-        if (this.state.listViewAvailable) {
-            this.applySearch(this.props.defaultQuery);
-        }
+        this.state = {
+            defaultSearchText: this.getDefaultValue(),
+            listViewAvailable: false
+        };
+
     }
 
     render() {
         return createElement("div", {
                 className: classNames("widget-text-box-search", this.props.class),
-                ref: (widgetDOM) => this.widgetDOM = widgetDOM,
+                ref: (widgetDom) => this.widgetDom = widgetDom,
                 style: SharedUtils.parseStyle(this.props.style)
             },
             createElement(Alert, {
@@ -68,14 +69,28 @@ export default class SearchContainer extends Component<ContainerProps, Container
         );
     }
 
+    componentDidMount() {
+        mendixLang.delay(this.connectToListView.bind(this), this.checkListViewAvailable.bind(this), 20);
+    }
+
+    componentDidUpdate(_prevProps: ContainerProps, prevState: ContainerState) {
+        if (this.state.listViewAvailable && !prevState.listViewAvailable) {
+            this.applySearch(this.state.defaultSearchText);
+        }
+    }
+
     private checkListViewAvailable(): boolean {
-        return !!SharedContainerUtils.findTargetListView(this.widgetDOM.parentElement, this.props.entity);
+        if (!this.widgetDom) {
+            return false;
+        }
+
+        return !!SharedContainerUtils.findTargetListView(this.widgetDom.parentElement, this.props.entity);
     }
 
     private renderTextBoxSearch(): ReactElement<TextBoxSearchProps> | null {
         if (!this.state.alertMessage) {
             return createElement(TextBoxSearch, {
-                defaultQuery: this.props.defaultQuery,
+                defaultQuery: this.state.defaultSearchText,
                 onTextChange: this.applySearch,
                 placeholder: this.props.placeHolder
             });
@@ -91,6 +106,7 @@ export default class SearchContainer extends Component<ContainerProps, Container
         if (this.dataSourceHelper) {
             this.dataSourceHelper.setConstraint(this.props.friendlyId, constraint);
         }
+        this.setState({ defaultSearchText: searchQuery });
     }
 
     private getConstraint(searchQuery: string): string | GroupedOfflineConstraint {
@@ -100,7 +116,6 @@ export default class SearchContainer extends Component<ContainerProps, Container
 
         if (!searchQuery) {
             return "";
-
         }
 
         if (window.mx.isOffline()) {
@@ -136,7 +151,7 @@ export default class SearchContainer extends Component<ContainerProps, Container
         let targetListView: ListView | undefined;
 
         try {
-            this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDOM.parentElement, this.props.entity);
+            this.dataSourceHelper = DataSourceHelper.getInstance(this.widgetDom.parentElement, this.props.entity);
             targetListView = this.dataSourceHelper.getListView();
         } catch (error) {
             errorMessage = error.message;
@@ -148,4 +163,9 @@ export default class SearchContainer extends Component<ContainerProps, Container
             targetListView
         });
     }
+
+    private getDefaultValue() {
+        return this.viewStateManager.getPageState("defaultSearchText", this.props.defaultQuery);
+    }
+
 }

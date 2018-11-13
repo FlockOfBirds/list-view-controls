@@ -2,10 +2,12 @@ import { ReactChild, createElement } from "react";
 import { ListView } from "../Shared/SharedUtils";
 import { ModelerProps } from "./Pagination";
 
-export interface ValidateConfigProps extends ModelerProps {
-    inWebModeler?: boolean;
-    queryNode?: HTMLElement | null;
-    targetListView?: ListView | null;
+type Props = Readonly<{ children?: React.ReactNode; }> & Readonly<ModelerProps>;
+
+export interface ValidateConfigProps extends Props {
+    readonly inWebModeler?: boolean;
+    readonly targetNode?: HTMLElement | null;
+    readonly targetListView?: ListView | null;
 }
 
 export class Validate {
@@ -32,7 +34,7 @@ export class Validate {
         }
 
         if (!props.inWebModeler) {
-            if (!props.queryNode) {
+            if (!props.targetNode) {
                 errorMessages.push("unable to find a list view on the page");
             }
             if (props.targetListView && !Validate.isCompatible(props.targetListView)) {
@@ -53,11 +55,14 @@ export class Validate {
     static isCompatible(targetListView: ListView): boolean {
         return !!(targetListView
             && targetListView._datasource
+            && targetListView._datasource.getOffset
             && targetListView._datasource.setOffset
-            && targetListView._datasource._pageSize !== undefined
+            && targetListView._datasource.getPageSize
+            && targetListView._datasource.setPageSize
             && targetListView._sourceReload
+            && targetListView._datasource._pageObjs
             && targetListView._renderData
-            && targetListView._datasource._setSize !== undefined
+            && targetListView._datasource.getSetSize
             && targetListView.update);
     }
 }
